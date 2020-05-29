@@ -1,8 +1,11 @@
+use chrono::Utc;
 use core_foundation::base::*;
 use core_foundation::number::*;
 use core_foundation::string::*;
 use core_graphics::display::*;
 use std::ffi::{c_void, CStr};
+use std::fs::OpenOptions;
+use std::io::Write;
 use std::{thread, time};
 
 unsafe fn get_window_layer(window_info: CFDictionaryRef) -> Option<i32> {
@@ -71,10 +74,20 @@ unsafe fn get_active_window_title() -> Option<String> {
     None
 }
 
-fn main() {
+fn main() -> Result<(), std::io::Error> {
+    let log_file_path = Utc::now().date().format("%Y-%m-%d.log.tsv");
+    let mut log_file = OpenOptions::new()
+        .append(true)
+        .create(true)
+        .open(log_file_path.to_string())?;
+    println!("Writing log to {}", log_file_path);
+
     loop {
-        let active_window = unsafe { get_active_window_title() };
-        println!("Active: {}", active_window.unwrap());
+        if let Some(active_window) = unsafe { get_active_window_title() } {
+            let now = Utc::now().to_rfc3339();
+            log_file.write_fmt(format_args!("{}\t{}\n", now, active_window))?;
+            log_file.flush()?;
+        }
         thread::sleep(time::Duration::from_millis(1000));
     }
 }
