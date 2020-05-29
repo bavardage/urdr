@@ -20,4 +20,4 @@ ARGS:
 
 Files will be written in tsv format.
 
-[![asciicast](https://asciinema.org/a/11Mk6PlT2Lgy4DnKFFKOs3jnJ.svg)](https://asciinema.org/a/11Mk6PlT2Lgy4DnKFFKOs3jnJ)
+![example](example.gif)
