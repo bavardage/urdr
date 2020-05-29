@@ -79,13 +79,15 @@ fn main() -> Result<(), ExitFailure> {
     }
 
     let log_file_path = Utc::now().date().format("%Y-%m-%d.log.tsv");
+    let full_path = std::fs::canonicalize(output_directory.join(log_file_path.to_string()))?;
+
     let mut log_file = OpenOptions::new()
         .append(true)
         .create(true)
-        .open(log_file_path.to_string())
-        .with_context(|_| format!("Unable to open output file: {:}", log_file_path.to_string()))?;
+        .open(&full_path)
+        .with_context(|_| format!("Unable to open output file: {:?}", &full_path))?;
 
-    println!("Writing log to {}", log_file_path);
+    println!("Writing log to {:?}", &full_path);
 
     let bar = indicatif::ProgressBar::new_spinner();
     bar.enable_steady_tick(100);
