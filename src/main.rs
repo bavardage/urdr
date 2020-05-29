@@ -5,11 +5,14 @@ use core_foundation::string::*;
 use core_graphics::display::*;
 use exitfailure::ExitFailure;
 use failure::ResultExt;
+use serde::Serialize;
 use std::fs::OpenOptions;
-use std::io::{ErrorKind, Write};
+use std::io::ErrorKind;
 use std::path::PathBuf;
 use std::{thread, time};
 use structopt::StructOpt;
+
+mod chrome;
 
 unsafe fn get_window_layer(window_info: CFDictionaryRef) -> Option<i32> {
     let window_info = CFDictionary::<CFString, CFNumber>::wrap_under_get_rule(window_info);
@@ -58,6 +61,13 @@ unsafe fn get_active_window_title() -> Option<String> {
     None
 }
 
+#[derive(Serialize)]
+struct Record {
+    timestamp: String,
+    window_title: String,
+    current_url: Option<String>,
+}
+
 #[derive(StructOpt)]
 struct Cli {
     /// The directory to output log files. Defaults to current directory.
@@ -78,28 +88,44 @@ fn main() -> Result<(), ExitFailure> {
         })?;
     }
 
-    let log_file_path = Utc::now().date().format("%Y-%m-%d.log.tsv");
-    let full_path = std::fs::canonicalize(output_directory.join(log_file_path.to_string()))?;
+    let log_file_path = Utc::now().date().format("%Y-%m-%d.log.csv");
+    let full_path = std::fs::canonicalize(output_directory)?.join(log_file_path.to_string());
 
-    let mut log_file = OpenOptions::new()
+    let log_file = OpenOptions::new()
         .append(true)
         .create(true)
         .open(&full_path)
         .with_context(|_| format!("Unable to open output file: {:?}", &full_path))?;
 
-    println!("Writing log to {:?}", &full_path);
+    let mut csv_writer = csv::WriterBuilder::new()
+        .has_headers(false)
+        .from_writer(log_file);
+
+    println!("Writing log to {}", &full_path.display());
 
     let bar = indicatif::ProgressBar::new_spinner();
     bar.enable_steady_tick(100);
 
     loop {
         if let Some(active_window) = unsafe { get_active_window_title() } {
-            let now = Utc::now().to_rfc3339();
+            let now = Utc::now();
+
+            let current_url = if active_window == "Google Chrome" {
+                chrome::get_active_tab_url()
+            } else {
+                None
+            };
+
+            let record = Record {
+                timestamp: now.to_rfc3339(),
+                window_title: active_window.clone(),
+                current_url: current_url,
+            };
 
             bar.set_message(active_window.as_str());
 
-            log_file.write_fmt(format_args!("{}\t{}\n", now, active_window))?;
-            log_file.flush()?;
+            csv_writer.serialize(record)?;
+            csv_writer.flush()?;
         }
         thread::sleep(time::Duration::from_millis(1000));
     }
