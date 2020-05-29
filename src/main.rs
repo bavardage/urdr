@@ -34,11 +34,10 @@ unsafe fn get_active_window_title() -> Option<String> {
     const OPTIONS: CGWindowListOption =
         kCGWindowListOptionOnScreenOnly | kCGWindowListExcludeDesktopElements;
 
-    let window_list_info = CGWindowListCopyWindowInfo(OPTIONS, kCGNullWindowID) as CFArrayRef;
-    let window_list_info = CFArray::<CFDictionary>::wrap_under_create_rule(window_list_info);
+    let window_list_info: CFArray = CGDisplay::window_list_info(OPTIONS, None).unwrap();
 
     for item in window_list_info.into_iter() {
-        let dic_ref = item.as_concrete_TypeRef();
+        let dic_ref = *item as CFDictionaryRef;
 
         let window_layer = get_window_layer(dic_ref);
         if window_layer.is_none() {
