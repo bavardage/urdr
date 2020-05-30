@@ -19,6 +19,6 @@ ARGS:
     <path>    The directory to output log files. Defaults to current directory
 ```
 
-Files will be written in tsv format.
+Files will be written in csv format.
 
 <img src="example.gif" width="800"/>
