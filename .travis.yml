@@ -1,6 +1,9 @@
 os: osx
 language: rust
 cache: cargo
+branches:
+  only:
+    - master
 before_install:
   - rustup component add clippy rustfmt
 script:
