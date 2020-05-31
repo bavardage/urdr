@@ -1,13 +1,39 @@
-# Use the latest 2.1 version of CircleCI pipeline process engine. See: https://circleci.com/docs/2.0/configuration-reference
-version: 2.1
-# Use a package of configuration called an orb.
-orbs:
-  # Declare a dependency on the welcome-orb
-  welcome: circleci/welcome-orb@0.4.1
-# Orchestrate or schedule a set of jobs
-workflows:
-  # Name the workflow "welcome"
-  welcome:
-    # Run the welcome/run job in its own container
-    jobs:
-      - welcome/run
+restore_registry: &RESTORE_REGISTRY
+  restore_cache:
+    key: registry
+save_registry: &SAVE_REGISTRY
+  save_cache:
+    key: registry-{{ .BuildNum }}
+    paths:
+      - /usr/local/cargo/registry/index
+deps_key: &DEPS_KEY
+  key: deps-{{ checksum "~/rust-version" }}-{{ checksum "Cargo.lock" }}
+restore_deps: &RESTORE_DEPS
+  restore_cache:
+    <<: *DEPS_KEY
+save_deps: &SAVE_DEPS
+  save_cache:
+    <<: *DEPS_KEY
+    paths:
+      - target
+      - /usr/local/cargo/registry/cache
+
+version: 2
+jobs:
+  build:
+    docker:
+      - image: rust:1.43.0
+    environment:
+      RUSTFLAGS: -D warnings
+    steps:
+      - checkout
+      - run: rustup component add rustfmt clippy
+      - *RESTORE_REGISTRY
+      - run: cargo generate-lockfile
+      - *SAVE_REGISTRY
+      - run: rustc --version > ~/rust-version
+      - *RESTORE_DEPS
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --all --all-targets
+      - run: cargo test --all
+      - *SAVE_DEPS
