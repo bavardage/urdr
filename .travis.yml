@@ -1,4 +1,9 @@
 os: osx
 language: rust
 cache: cargo
-
+before_install:
+  - rustup component add clippy rustfmt
+script:
+  - cargo test
+  - cargo clippy --all-targets -- -D warnings
+  - cargo fmt -- --check
