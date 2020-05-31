@@ -78,7 +78,7 @@ struct Cli {
 fn main() -> Result<(), ExitFailure> {
     let args: Cli = Cli::from_args();
 
-    let output_directory = args.path.unwrap_or(PathBuf::from("."));
+    let output_directory = args.path.unwrap_or_else(|| PathBuf::from("."));
     if !output_directory.is_dir() {
         return Err(std::io::Error::from(ErrorKind::InvalidInput)).with_context(|_| {
             format!(
@@ -103,8 +103,8 @@ fn main() -> Result<(), ExitFailure> {
 
     println!("Writing log to {}", &full_path.display());
 
-    let bar = indicatif::ProgressBar::new_spinner();
-    bar.enable_steady_tick(100);
+    let progress_bar = indicatif::ProgressBar::new_spinner();
+    progress_bar.enable_steady_tick(100);
 
     loop {
         if let Some(active_window) = unsafe { get_active_window_title() } {
@@ -119,10 +119,10 @@ fn main() -> Result<(), ExitFailure> {
             let record = Record {
                 timestamp: now.to_rfc3339(),
                 window_title: active_window.clone(),
-                current_url: current_url,
+                current_url,
             };
 
-            bar.set_message(active_window.as_str());
+            progress_bar.set_message(active_window.as_str());
 
             csv_writer.serialize(record)?;
             csv_writer.flush()?;
